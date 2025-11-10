@@ -41,6 +41,39 @@ activities = {
     }
 }
 
+activities.update({
+    "volleyball": {
+        "category": "sports",
+        "max_participants": 16,
+        "participants": []
+    },
+    "tennis": {
+        "category": "sports",
+        "max_participants": 8,
+        "participants": []
+    },
+    "painting_club": {
+        "category": "artistic",
+        "max_participants": 12,
+        "participants": []
+    },
+    "choir": {
+        "category": "artistic",
+        "max_participants": 30,
+        "participants": []
+    },
+    "chess_club": {
+        "category": "intellectual",
+        "max_participants": 20,
+        "participants": []
+    },
+    "robotics": {
+        "category": "intellectual",
+        "max_participants": 15,
+        "participants": []
+    }
+})
+
 
 @app.get("/")
 def root():
