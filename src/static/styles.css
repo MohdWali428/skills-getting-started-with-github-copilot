@@ -110,6 +110,31 @@ section h3 {
   color: #13326b;
 }
 
+/* Delete/unregister button next to each participant */
+.activity-card .participants .participant-delete {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: #c62828;
+  font-weight: 700;
+  font-size: 14px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.activity-card .participants .participant-delete:hover,
+.activity-card .participants .participant-delete:focus {
+  background: rgba(198,40,40,0.08);
+  outline: none;
+  color: #9a1f1f;
+}
+
 /* Small round avatar with initials */
 .activity-card .participants .participant-avatar {
   width: 32px;

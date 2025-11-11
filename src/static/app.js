@@ -64,24 +64,70 @@ document.addEventListener("DOMContentLoaded", () => {
           ul.appendChild(li);
         } else {
           participantsArray.forEach((p) => {
-            const li = document.createElement("li");
+              const li = document.createElement("li");
 
-            const avatar = document.createElement("span");
-            avatar.className = "participant-avatar";
-            avatar.textContent = getInitials(typeof p === "string" ? p : (p.name || p.email || ""));
+              const avatar = document.createElement("span");
+              avatar.className = "participant-avatar";
+              avatar.textContent = getInitials(typeof p === "string" ? p : (p.name || p.email || ""));
 
-            const nameSpan = document.createElement("span");
-            nameSpan.className = "participant-name";
-            // Show a friendly label: prefer name if available, otherwise show email/string
-            if (typeof p === "string") {
-              nameSpan.textContent = p;
-            } else {
-              nameSpan.textContent = p.name ? `${p.name} (${p.email || ""})` : (p.email || "");
-            }
+              const nameSpan = document.createElement("span");
+              nameSpan.className = "participant-name";
+              // Show a friendly label: prefer name if available, otherwise show email/string
+              let email = "";
+              if (typeof p === "string") {
+                nameSpan.textContent = p;
+                email = p;
+              } else {
+                nameSpan.textContent = p.name ? `${p.name} (${p.email || ""})` : (p.email || "");
+                email = p.email || "";
+              }
 
-            li.appendChild(avatar);
-            li.appendChild(nameSpan);
-            ul.appendChild(li);
+              li.appendChild(avatar);
+              li.appendChild(nameSpan);
+
+              // Delete/unregister button
+              const delBtn = document.createElement("button");
+              delBtn.className = "participant-delete";
+              delBtn.type = "button";
+              delBtn.title = `Unregister ${email}`;
+              delBtn.setAttribute("aria-label", `Unregister ${email}`);
+              delBtn.textContent = "✖";
+
+              delBtn.addEventListener("click", async (ev) => {
+                ev.stopPropagation();
+                if (!email) return;
+
+                const confirmed = window.confirm(`Unregister ${email} from ${name}?`);
+                if (!confirmed) return;
+
+                try {
+                  const resp = await fetch(`/activities/${encodeURIComponent(name)}/signup?email=${encodeURIComponent(email)}`, {
+                    method: "DELETE",
+                  });
+                  const result = await resp.json();
+
+                  if (resp.ok) {
+                    messageDiv.textContent = result.message || `Unregistered ${email}`;
+                    messageDiv.className = "success";
+                    // refresh the list
+                    fetchActivities();
+                  } else {
+                    messageDiv.textContent = result.detail || "Failed to unregister";
+                    messageDiv.className = "error";
+                  }
+
+                  messageDiv.classList.remove("hidden");
+                  setTimeout(() => messageDiv.classList.add("hidden"), 4000);
+                } catch (error) {
+                  messageDiv.textContent = "Failed to unregister. Please try again.";
+                  messageDiv.className = "error";
+                  messageDiv.classList.remove("hidden");
+                  console.error("Error unregistering:", error);
+                }
+              });
+
+              li.appendChild(delBtn);
+              ul.appendChild(li);
           });
         }
 
