@@ -4,28 +4,135 @@ document.addEventListener("DOMContentLoaded", () => {
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
 
+  // Helper to build initials for the avatar badge
+  function getInitials(text) {
+    if (!text) return "";
+    // If looks like an email, take the local-part
+    const local = text.includes("@") ? text.split("@")[0] : text;
+    // If contains spaces (full name), use first letters of first two words
+    const parts = local.trim().split(/[\s._-]+/).filter(Boolean);
+    if (parts.length === 0) return "";
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).slice(0, 2).toUpperCase();
+  }
+
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
       const response = await fetch("/activities");
       const activities = await response.json();
 
-      // Clear loading message
+      // Clear loading message and current options
       activitiesList.innerHTML = "";
+      // Reset activity select but keep the placeholder option if present
+      const placeholder = activitySelect.querySelector('option[value=""]') || null;
+      activitySelect.innerHTML = "";
+      if (placeholder) activitySelect.appendChild(placeholder);
 
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
         const activityCard = document.createElement("div");
         activityCard.className = "activity-card";
 
-        const spotsLeft = details.max_participants - details.participants.length;
+        const spotsLeft = details.max_participants - (details.participants?.length || 0);
 
+        // Basic info
         activityCard.innerHTML = `
           <h4>${name}</h4>
-          <p>${details.description}</p>
-          <p><strong>Schedule:</strong> ${details.schedule}</p>
+          <p>${details.description || ""}</p>
+          <p><strong>Schedule:</strong> ${details.schedule || "TBD"}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
         `;
+
+        // Build participants section
+        const participantsDiv = document.createElement("div");
+        participantsDiv.className = "participants";
+        participantsDiv.setAttribute("aria-live", "polite");
+
+        const participantsHeading = document.createElement("h5");
+        participantsHeading.textContent = "Participants";
+        participantsDiv.appendChild(participantsHeading);
+
+        const ul = document.createElement("ul");
+
+        const participantsArray = Array.isArray(details.participants) ? details.participants : [];
+
+        if (participantsArray.length === 0) {
+          const li = document.createElement("li");
+          li.className = "no-participants";
+          li.textContent = "No participants yet";
+          ul.appendChild(li);
+        } else {
+          participantsArray.forEach((p) => {
+              const li = document.createElement("li");
+
+              const avatar = document.createElement("span");
+              avatar.className = "participant-avatar";
+              avatar.textContent = getInitials(typeof p === "string" ? p : (p.name || p.email || ""));
+
+              const nameSpan = document.createElement("span");
+              nameSpan.className = "participant-name";
+              // Show a friendly label: prefer name if available, otherwise show email/string
+              let email = "";
+              if (typeof p === "string") {
+                nameSpan.textContent = p;
+                email = p;
+              } else {
+                nameSpan.textContent = p.name ? `${p.name} (${p.email || ""})` : (p.email || "");
+                email = p.email || "";
+              }
+
+              li.appendChild(avatar);
+              li.appendChild(nameSpan);
+
+              // Delete/unregister button
+              const delBtn = document.createElement("button");
+              delBtn.className = "participant-delete";
+              delBtn.type = "button";
+              delBtn.title = `Unregister ${email}`;
+              delBtn.setAttribute("aria-label", `Unregister ${email}`);
+              delBtn.textContent = "✖";
+
+              delBtn.addEventListener("click", async (ev) => {
+                ev.stopPropagation();
+                if (!email) return;
+
+                const confirmed = window.confirm(`Unregister ${email} from ${name}?`);
+                if (!confirmed) return;
+
+                try {
+                  const resp = await fetch(`/activities/${encodeURIComponent(name)}/signup?email=${encodeURIComponent(email)}`, {
+                    method: "DELETE",
+                  });
+                  const result = await resp.json();
+
+                  if (resp.ok) {
+                    messageDiv.textContent = result.message || `Unregistered ${email}`;
+                    messageDiv.className = "success";
+                    // refresh the list
+                    fetchActivities();
+                  } else {
+                    messageDiv.textContent = result.detail || "Failed to unregister";
+                    messageDiv.className = "error";
+                  }
+
+                  messageDiv.classList.remove("hidden");
+                  setTimeout(() => messageDiv.classList.add("hidden"), 4000);
+                } catch (error) {
+                  messageDiv.textContent = "Failed to unregister. Please try again.";
+                  messageDiv.className = "error";
+                  messageDiv.classList.remove("hidden");
+                  console.error("Error unregistering:", error);
+                }
+              });
+
+              li.appendChild(delBtn);
+              ul.appendChild(li);
+          });
+        }
+
+        participantsDiv.appendChild(ul);
+        activityCard.appendChild(participantsDiv);
 
         activitiesList.appendChild(activityCard);
 
@@ -62,6 +169,9 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+
+        // Refresh activities so participants list updates immediately
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
